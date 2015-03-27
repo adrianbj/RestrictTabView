@@ -1,0 +1,138 @@
+<?php
+
+/**
+ * ProcessWire module for restricting access to Page Edit tabs via permissions
+ * by Adrian Jones
+ *
+ * Determine how pages are renamed when the title is changed
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2011 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class RestrictTabView extends WireData implements Module, ConfigurableModule {
+
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'Restrict Tab View',
+            'summary' => 'Restrict access to Page Edit tabs via permissions',
+            'href' => '',
+            'version' => 1,
+            'autoload' => 'template=admin',
+            'icon'     => 'toggle-on'
+        );
+    }
+
+
+    /**
+     * Data as used by the get/set functions
+     *
+     */
+    protected $data = array();
+
+
+   /**
+     * Default configuration for module
+     *
+     */
+    static public function getDefaultData() {
+            return array(
+                "viewTabs" => array(),
+                "hideTabs" => array()
+            );
+    }
+
+    /**
+     * Populate the default config data
+     *
+     */
+    public function __construct() {
+       foreach(self::getDefaultData() as $key => $value) {
+               $this->$key = $value;
+       }
+    }
+
+
+    public function init() {
+        $this->addHookAfter('ProcessPageEdit::buildForm', $this, "removeTabs");
+    }
+
+
+    public function removeTabs(HookEvent $event){
+
+        $form = $event->return;
+
+        foreach($this->data['viewTabs'] as $tab) {
+            if(!$this->user->hasPermission("tab-".strtolower($tab)."-view")) {
+                if($tab == "Settings" || $tab == "Children") {
+                    $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
+                }
+                else {
+                    $fieldset = $form->find("id=ProcessPageEdit".$tab);
+                }
+                $form->remove($fieldset);
+                $event->object->removeTab("ProcessPageEdit".$tab);
+            }
+        }
+
+        foreach($this->data['hideTabs'] as $tab) {
+            if($this->user->hasPermission("tab-".strtolower($tab)."-hide")) {
+                if($tab == "Settings" || $tab == "Children") {
+                    $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
+                }
+                else {
+                    $fieldset = $form->find("id=ProcessPageEdit".$tab);
+                }
+                $form->remove($fieldset);
+                $event->object->removeTab("ProcessPageEdit".$tab);
+            }
+        }
+
+        $event->return = $form;
+}
+
+
+    /**
+     * Return an InputfieldsWrapper of Inputfields used to configure the class
+     *
+     * @param array $data Array of config values indexed by field name
+     * @return InputfieldsWrapper
+     *
+     */
+    public static function getModuleConfigInputfields(array $data) {
+
+        $data = array_merge(self::getDefaultData(), $data);
+
+        $wrapper = new InputFieldWrapper();
+
+        $f = wire('modules')->get('InputfieldCheckboxes');
+        $f->attr('name+id', 'viewTabs');
+        $f->label = __('View Tabs');
+        $f->description = __("For non-superusers, the selected tabs will not be viewable unless they have a permission named tab-tabname-view, eg: tab-settings-view");
+        $f->addOption("Children");
+        $f->addOption("Settings");
+        $f->addOption("Delete");
+        $f->addOption("View");
+        if(isset($data['viewTabs'])) $f->value = $data['viewTabs'];
+        $wrapper->add($f);
+
+        $f = wire('modules')->get('InputfieldCheckboxes');
+        $f->attr('name+id', 'hideTabs');
+        $f->label = __('Hide Tabs');
+        $f->description = __("For non-superusers, the selected tabs will be hidden if they have a permission named tab-tabname-hide, eg: tab-settings-hide");
+        $f->addOption("Children");
+        $f->addOption("Settings");
+        $f->addOption("Delete");
+        $f->addOption("View");
+        if(isset($data['hideTabs'])) $f->value = $data['hideTabs'];
+        $wrapper->add($f);
+
+        return $wrapper;
+    }
+
+}
