@@ -22,7 +22,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'title' => 'Restrict Tab View',
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'href' => '',
-            'version' => 2,
+            'version' => 3,
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -60,42 +60,77 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
 
 
     public function init() {
-        $this->addHookAfter('ProcessPageEdit::buildForm', $this, "removeTabs");
+        $this->addHookAfter('ProcessPageEdit::buildFormContent', $this, "afterBuildFormContent");
+        $this->addHookAfter('ProcessPageEdit::buildForm', $this, "afterBuildForm");
     }
 
 
-    public function removeTabs(HookEvent $event){
+    public function afterBuildForm(HookEvent $event){
 
         $form = $event->return;
 
         foreach($this->data['viewTabs'] as $tab) {
             if(!$this->user->hasPermission("tab-".strtolower($tab)."-view")) {
-                if($tab == "Settings" || $tab == "Children") {
-                    $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
-                }
-                else {
-                    $fieldset = $form->find("id=ProcessPageEdit".$tab);
-                }
-                $form->remove($fieldset);
-                $event->object->removeTab("ProcessPageEdit".$tab);
+                $this->removeTabs($tab, $event);
             }
         }
 
         foreach($this->data['hideTabs'] as $tab) {
             if($this->user->hasPermission("tab-".strtolower($tab)."-hide")) {
-                if($tab == "Settings" || $tab == "Children") {
-                    $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
-                }
-                else {
-                    $fieldset = $form->find("id=ProcessPageEdit".$tab);
-                }
-                $form->remove($fieldset);
-                $event->object->removeTab("ProcessPageEdit".$tab);
+                $this->removeTabs($tab, $event);
             }
         }
 
         $event->return = $form;
-}
+    }
+
+
+    public function afterBuildFormContent (HookEvent $event) {
+
+        // if settings tab is hidden for this user and name field is not set to be in the content tab, then we need to add it hidden
+        if(
+            (in_array("Settings", $this->data['viewTabs']) && !$this->user->hasPermission("tab-settings-view")) ||
+            (in_array("Settings", $this->data['hideTabs']) && $this->user->hasPermission("tab-settings-hide"))
+        ) {
+
+            $form = $event->return;
+            $p = $event->object->getPage();
+
+            if(!$p->template->nameContentTab) {
+                // name
+                $field = $this->modules->get('InputfieldHidden');
+                $field->attr('name', '_pw_page_name');
+                $field->attr('value', $p->name);
+                $field->required = $p->id != 1;
+                $field->slashUrls = $p->template->slashUrls;
+                if(!$p->editable('name')) {
+                    $field->attr('disabled', 'disabled');
+                    $field->required = false;
+                }
+                if($p->parent) $field->parentPage = $p->parent;
+                $form->insertAfter($field, $form->get("title"));
+            }
+
+        }
+    }
+
+
+    public function removeTabs ($tab, $event) {
+
+        $form = $event->return;
+
+        if($tab == "Settings" || $tab == "Children") {
+            $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
+        }
+        else {
+            $fieldset = $form->find("id=ProcessPageEdit".$tab);
+        }
+        $form->remove($fieldset);
+        $event->object->removeTab("ProcessPageEdit".$tab);
+    }
+
+
+
 
 
     /**
