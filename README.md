@@ -7,7 +7,7 @@ ProcessWire module for restricting access to view various Page Edit tabs via per
 
 There are two sections: View Tabs, and Hide Tabs and you can use a combination of both.
 
-If a tab has been checked, access the view/hide a tab is controlled by permissions named in the following format:
+If a tab has been checked, access to view/hide that tab is controlled by permissions named in the following format:
 tab-tabname-view, eg: tab-settings-view OR tab-tabname-hide, eg: tab-settings-hide
 
 It is your responsibility to create these permissions as required and assign them to the roles you want to restrict view access to.
