@@ -22,7 +22,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'title' => 'Restrict Tab View',
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'href' => '',
-            'version' => 3,
+            'version' => 4,
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -108,7 +108,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
                     $field->required = false;
                 }
                 if($p->parent) $field->parentPage = $p->parent;
-                $form->insertAfter($field, $form->get("title"));
+                $form->prepend($field);
             }
 
         }
