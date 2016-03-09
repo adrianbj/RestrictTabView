@@ -21,6 +21,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         return array(
             'title' => 'Restrict Tab View',
             'summary' => 'Restrict access to Page Edit tabs via permissions',
+            'author' => 'Adrian Jones',
             'href' => '',
             'version' => 8,
             'autoload' => 'template=admin',

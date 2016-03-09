@@ -12,6 +12,9 @@ tab-tabname-view, eg: tab-settings-view OR tab-tabname-hide, eg: tab-settings-hi
 
 It is your responsibility to create these permissions as required and assign them to the roles you want to restrict view access to.
 
+####Support forum:
+https://processwire.com/talk/topic/9496-restrict-tab-view/
+
 ## License
 
 This program is free software; you can redistribute it and/or
