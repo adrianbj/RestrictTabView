@@ -23,7 +23,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => '',
-            'version' => 8,
+            'version' => 9,
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -71,16 +71,19 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         if($this->user->isSuperuser()) return;
 
         $form = $event->return;
+        $p = $event->object->getPage();
 
-        foreach($this->data['viewTabs'] as $tab) {
-            if(!$this->user->hasPermission("tab-".strtolower($tab)."-view")) {
-                $this->removeTabs($tab, $event);
+        if(!$this->data['specifiedTemplates'] || in_array($p->template->id, $this->data['specifiedTemplates'])) {
+            foreach($this->data['viewTabs'] as $tab) {
+                if(!$this->user->hasPermission("tab-".strtolower($tab)."-view")) {
+                    $this->removeTabs($tab, $event);
+                }
             }
-        }
 
-        foreach($this->data['hideTabs'] as $tab) {
-            if($this->user->hasPermission("tab-".strtolower($tab)."-hide")) {
-                $this->removeTabs($tab, $event);
+            foreach($this->data['hideTabs'] as $tab) {
+                if($this->user->hasPermission("tab-".strtolower($tab)."-hide")) {
+                    $this->removeTabs($tab, $event);
+                }
             }
         }
 
@@ -173,6 +176,16 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $f->addOption("Delete");
         $f->addOption("View");
         if(isset($data['hideTabs'])) $f->value = $data['hideTabs'];
+        $wrapper->add($f);
+
+        $f = wire('modules')->get('InputfieldAsmSelect');
+        $f->attr('name+id', 'specifiedTemplates');
+        $f->label = __('Specified Templates');
+        $f->description = __("If any templates are selected, then only these templates will be affected. If none selected, then all will be affected.");
+        $f->setAsmSelectOption('sortable', false);
+        // populate with all available templates
+        foreach(wire('templates') as $t) $f->addOption($t->id,$t->name);
+        if(isset($data['specifiedTemplates'])) $f->value = $data['specifiedTemplates'];
         $wrapper->add($f);
 
         return $wrapper;
