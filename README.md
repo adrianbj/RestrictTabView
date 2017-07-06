@@ -3,7 +3,7 @@ RestrictTabView
 
 ProcessWire module for restricting access to view various Page Edit tabs via permissions
 
-##CONFIG SETTINGS
+## CONFIG SETTINGS
 
 There are two sections: View Tabs, and Hide Tabs and you can use a combination of both.
 
@@ -12,7 +12,7 @@ tab-tabname-view, eg: tab-settings-view OR tab-tabname-hide, eg: tab-settings-hi
 
 It is your responsibility to create these permissions as required and assign them to the roles you want to restrict view access to.
 
-####Support forum:
+#### Support forum:
 https://processwire.com/talk/topic/9496-restrict-tab-view/
 
 ## License

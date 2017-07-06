@@ -22,8 +22,8 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'title' => 'Restrict Tab View',
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
-            'href' => '',
-            'version' => 9,
+            'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
+            'version' => '1.0.0',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -45,7 +45,8 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
     static public function getDefaultData() {
             return array(
                 "viewTabs" => array(),
-                "hideTabs" => array()
+                "hideTabs" => array(),
+                "specifiedTemplates" => array()
             );
     }
 
@@ -68,20 +69,20 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
 
     public function afterBuildForm(HookEvent $event){
 
-        if($this->user->isSuperuser()) return;
+        if($this->wire('user')->isSuperuser()) return;
 
         $form = $event->return;
         $p = $event->object->getPage();
 
         if(!$this->data['specifiedTemplates'] || in_array($p->template->id, $this->data['specifiedTemplates'])) {
             foreach($this->data['viewTabs'] as $tab) {
-                if(!$this->user->hasPermission("tab-".strtolower($tab)."-view")) {
+                if(!$this->wire('user')->hasPermission("tab-".strtolower($tab)."-view")) {
                     $this->removeTabs($tab, $event);
                 }
             }
 
             foreach($this->data['hideTabs'] as $tab) {
-                if($this->user->hasPermission("tab-".strtolower($tab)."-hide")) {
+                if($this->wire('user')->hasPermission("tab-".strtolower($tab)."-hide")) {
                     $this->removeTabs($tab, $event);
                 }
             }
@@ -93,12 +94,12 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
 
     public function afterBuildFormContent (HookEvent $event) {
 
-        if($this->user->isSuperuser()) return;
+        if($this->wire('user')->isSuperuser()) return;
 
         // if settings tab is hidden for this user and name field is not set to be in the content tab, then we need to add it hidden
         if(
-            (in_array("Settings", $this->data['viewTabs']) && !$this->user->hasPermission("tab-settings-view")) ||
-            (in_array("Settings", $this->data['hideTabs']) && $this->user->hasPermission("tab-settings-hide"))
+            (in_array("Settings", $this->data['viewTabs']) && !$this->wire('user')->hasPermission("tab-settings-view")) ||
+            (in_array("Settings", $this->data['hideTabs']) && $this->wire('user')->hasPermission("tab-settings-hide"))
         ) {
 
             $form = $event->return;
@@ -106,7 +107,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
 
             if(!$p->template->nameContentTab) {
                 // name
-                $field = $this->modules->get('InputfieldHidden');
+                $field = $this->wire('modules')->get('InputfieldHidden');
                 $field->attr('name', '_pw_page_name');
                 $field->attr('value', $p->name);
                 $field->required = $p->id != 1;
@@ -150,13 +151,13 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
      * @return InputfieldsWrapper
      *
      */
-    public static function getModuleConfigInputfields(array $data) {
+    public function getModuleConfigInputfields(array $data) {
 
         $data = array_merge(self::getDefaultData(), $data);
 
         $wrapper = new InputfieldWrapper();
 
-        $f = wire('modules')->get('InputfieldCheckboxes');
+        $f = $this->wire('modules')->get('InputfieldCheckboxes');
         $f->attr('name+id', 'viewTabs');
         $f->label = __('View Tabs');
         $f->description = __("For non-superusers, the selected tabs will not be viewable unless they have a permission named tab-tabname-view, eg: tab-settings-view");
@@ -167,7 +168,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         if(isset($data['viewTabs'])) $f->value = $data['viewTabs'];
         $wrapper->add($f);
 
-        $f = wire('modules')->get('InputfieldCheckboxes');
+        $f = $this->wire('modules')->get('InputfieldCheckboxes');
         $f->attr('name+id', 'hideTabs');
         $f->label = __('Hide Tabs');
         $f->description = __("For non-superusers, the selected tabs will be hidden if they have a permission named tab-tabname-hide, eg: tab-settings-hide");
@@ -178,13 +179,13 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         if(isset($data['hideTabs'])) $f->value = $data['hideTabs'];
         $wrapper->add($f);
 
-        $f = wire('modules')->get('InputfieldAsmSelect');
+        $f = $this->wire('modules')->get('InputfieldAsmSelect');
         $f->attr('name+id', 'specifiedTemplates');
         $f->label = __('Specified Templates');
         $f->description = __("If any templates are selected, then only these templates will be affected. If none selected, then all will be affected.");
         $f->setAsmSelectOption('sortable', false);
         // populate with all available templates
-        foreach(wire('templates') as $t) $f->addOption($t->id,$t->name);
+        foreach($this->wire('templates') as $t) $f->addOption($t->id,$t->name);
         if(isset($data['specifiedTemplates'])) $f->value = $data['specifiedTemplates'];
         $wrapper->add($f);
 
