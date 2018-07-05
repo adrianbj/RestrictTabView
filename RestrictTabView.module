@@ -23,7 +23,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
-            'version' => '1.1.0',
+            'version' => '1.1.1',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -111,7 +111,8 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $form = $event->return;
 
         if($tab == "Settings") {
-            $form->_pw_page_name->collapsed = Inputfield::collapsedYes;
+            $pn = $form->getChildByName('_pw_page_name');
+            $pn->wrapAttr('style', 'display:none;');
         }
 
         if($tab == "Settings" || $tab == "Children" || $tab == "Delete") {
