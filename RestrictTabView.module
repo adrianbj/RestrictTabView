@@ -23,7 +23,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
-            'version' => '1.1.1',
+            'version' => '1.1.2',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -46,7 +46,8 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             return array(
                 "viewTabs" => array(),
                 "hideTabs" => array(),
-                "specifiedTemplates" => array()
+                "specifiedTemplates" => array(),
+                "showNameInContentTab" => false
             );
     }
 
@@ -111,11 +112,13 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $form = $event->return;
 
         if($tab == "Settings") {
-            $pn = $form->getChildByName('_pw_page_name');
-            $pn->wrapAttr('style', 'display:none;');
+            if(!$this->data['showNameInContentTab']) {
+                $pn = $form->getChildByName('_pw_page_name');
+                $pn->wrapAttr('style', 'display:none;');
+            }
         }
 
-        if($tab == "Settings" || $tab == "Children" || $tab == "Delete") {
+        if($tab == "Settings" || $tab == "Children" || $tab == "Restore" || $tab == "Delete") {
             $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
         }
         else {
@@ -153,6 +156,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $f->description = __("For non-superusers, the selected tabs will not be viewable unless they have a permission named tab-tabname-view, eg: tab-settings-view");
         $f->addOption("Children");
         $f->addOption("Settings");
+        $f->addOption("Restore");
         $f->addOption("Delete");
         $f->addOption("View");
         if(isset($data['viewTabs'])) $f->value = $data['viewTabs'];
@@ -164,6 +168,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $f->description = __("For non-superusers, the selected tabs will be hidden if they have a permission named tab-tabname-hide, eg: tab-settings-hide");
         $f->addOption("Children");
         $f->addOption("Settings");
+        $f->addOption("Restore");
         $f->addOption("Delete");
         $f->addOption("View");
         if(isset($data['hideTabs'])) $f->value = $data['hideTabs'];
@@ -177,6 +182,13 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         // populate with all available templates
         foreach($this->wire('templates') as $t) $f->addOption($t->id,$t->name);
         if(isset($data['specifiedTemplates'])) $f->value = $data['specifiedTemplates'];
+        $wrapper->add($f);
+
+        $f = $this->wire('modules')->get('InputfieldCheckbox');
+        $f->attr('name+id', 'showNameInContentTab');
+        $f->label = __('Show page name in content tab');
+        $f->description = __("If settings tabs is hidden, do you want the name field to be visible in the content tab?");
+        $f->attr('checked', $data['showNameInContentTab'] == '1' ? 'checked' : '');
         $wrapper->add($f);
 
         return $wrapper;
