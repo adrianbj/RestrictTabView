@@ -114,7 +114,9 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         if($tab == "Settings") {
             if(!$this->data['showNameInContentTab']) {
                 $pn = $form->getChildByName('_pw_page_name');
-                $pn->wrapAttr('style', 'display:none;');
+                if ($pn instanceof Inputfield) {
+                    $pn->wrapAttr('style', 'display:none;');
+                }
             }
         }
 
