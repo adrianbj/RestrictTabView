@@ -6,12 +6,7 @@
  *
  * Determine how pages are renamed when the title is changed
  *
- * ProcessWire 2.x
- * Copyright (C) 2011 by Ryan Cramer
- * Licensed under GNU/GPL v2, see LICENSE.TXT
- *
- * http://www.processwire.com
- * http://www.ryancramer.com
+ * Copyright (C) 2020 by Adrian Jones
  *
  */
 
@@ -23,7 +18,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
-            'version' => '1.1.3',
+            'version' => '1.2.1',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -31,11 +26,9 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
     }
 
 
-    /**
-     * Data as used by the get/set functions
-     *
-     */
     protected $data = array();
+
+    protected $hiddenTabs = array();
 
 
    /**
@@ -43,12 +36,12 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
      *
      */
     static public function getDefaultData() {
-            return array(
-                "viewTabs" => array(),
-                "hideTabs" => array(),
-                "specifiedTemplates" => array(),
-                "showNameInContentTab" => false
-            );
+        return array(
+            "viewTabs" => array(),
+            "hideTabs" => array(),
+            "specifiedTemplates" => array(),
+            "showNameInContentTab" => false
+        );
     }
 
     /**
@@ -56,42 +49,42 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
      *
      */
     public function __construct() {
-       foreach(self::getDefaultData() as $key => $value) {
-               $this->$key = $value;
-       }
+        foreach(self::getDefaultData() as $key => $value) {
+            $this->$key = $value;
+        }
     }
 
 
     public function init() {
         if($this->wire('user')->isSuperuser()) return;
-        $this->addHookBefore('ProcessPageEdit::buildFormContent', $this, "beforeBuildFormContent");
-        $this->addHookAfter('ProcessPageEdit::buildForm', $this, "afterBuildForm");
+        $this->wire()->addHookAfter('ProcessPageEdit::loadPage', function(HookEvent $event) {
+            $pid = $event->arguments[0];
+            $this->getHiddenTabs($pid);
+        });
+        $this->wire()->addHookBefore('ProcessPageEdit::buildFormContent', $this, "beforeBuildFormContent");
+        $this->wire()->addHookAfter('ProcessPageEdit::buildForm', $this, "afterBuildForm");
+        $this->wire()->addHookAfter('ProcessPageEdit::execute', function(HookEvent $event) {
+            if(in_array('View', $this->hiddenTabs)) {
+                $event->return .= '
+                <script>
+                    $(document).ready(function() {
+                        $("#_ProcessPageEditViewDropdown").remove();
+                        $(".after-submit-view").parent().remove();
+                    });
+                </script>';
+            }
+        });
     }
 
 
     protected function afterBuildForm(HookEvent $event) {
-
-        $p = $event->object->getPage();
-
-        if(!$this->data['specifiedTemplates'] || in_array($p->template->id, $this->data['specifiedTemplates'])) {
-            foreach($this->data['viewTabs'] as $tab) {
-                if(!$this->wire('user')->hasPermission("tab-".strtolower($tab)."-view")) {
-                    $this->removeTabs($tab, $event);
-                }
-            }
-
-            foreach($this->data['hideTabs'] as $tab) {
-                if($this->wire('user')->hasPermission("tab-".strtolower($tab)."-hide")) {
-                    $this->removeTabs($tab, $event);
-                }
-            }
+        foreach($this->hiddenTabs as $tab) {
+            $this->removeTabs($tab, $event);
         }
-
     }
 
 
-    protected function beforeBuildFormContent (HookEvent $event) {
-
+    protected function beforeBuildFormContent(HookEvent $event) {
         // if settings tab is hidden for this user and name field is not set to be in the content tab, then we need to add it hidden
         if(
             (in_array("Settings", $this->data['viewTabs']) && !$this->wire('user')->hasPermission("tab-settings-view")) ||
@@ -106,15 +99,32 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         }
     }
 
+    private function getHiddenTabs($pid) {
+        $p = $this->wire('pages')->get($pid);
+        if(!$this->data['specifiedTemplates'] || in_array($p->template->id, $this->data['specifiedTemplates'])) {
+            foreach($this->data['viewTabs'] as $tab) {
+                if(!$this->wire('user')->hasPermission("tab-".strtolower($tab)."-view")) {
+                    $this->hiddenTabs[] = $tab;
+                }
+            }
 
-    private function removeTabs ($tab, $event) {
+            foreach($this->data['hideTabs'] as $tab) {
+                if($this->wire('user')->hasPermission("tab-".strtolower($tab)."-hide")) {
+                    $this->hiddenTabs[] = $tab;
+                }
+            }
+        }
+    }
+
+
+    private function removeTabs($tab, $event) {
 
         $form = $event->return;
 
         if($tab == "Settings") {
             if(!$this->data['showNameInContentTab']) {
                 $pn = $form->getChildByName('_pw_page_name');
-                if ($pn instanceof Inputfield) {
+                if($pn instanceof Inputfield) {
                     $pn->wrapAttr('style', 'display:none;');
                 }
             }
@@ -125,18 +135,12 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         }
         else {
             $fieldset = $form->find("id=ProcessPageEdit".$tab);
-            $this->addHookAfter('Page::viewable', function(HookEvent $event) {
-                $event->return = false;
-            });
         }
         if(!is_object($fieldset)) return;
 
         $form->remove($fieldset);
         $event->object->removeTab("ProcessPageEdit".$tab);
     }
-
-
-
 
 
     /**
