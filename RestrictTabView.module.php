@@ -18,7 +18,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
-            'version' => '1.2.1',
+            'version' => '1.2.2',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -69,7 +69,6 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
                 <script>
                     $(document).ready(function() {
                         $("#_ProcessPageEditViewDropdown").remove();
-                        $(".after-submit-view").parent().remove();
                     });
                 </script>';
             }
