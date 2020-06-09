@@ -18,7 +18,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
-            'version' => '1.2.2',
+            'version' => '1.3.0',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -40,6 +40,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             "viewTabs" => array(),
             "hideTabs" => array(),
             "specifiedTemplates" => array(),
+            "exemptRoles" => array(),
             "showNameInContentTab" => false
         );
     }
@@ -56,7 +57,11 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
 
 
     public function init() {
+
         if($this->wire('user')->isSuperuser()) return;
+        foreach($this->data['exemptRoles'] as $role) {
+            if($this->wire('user')->hasRole($role)) return;
+        }
         $this->wire()->addHookAfter('ProcessPageEdit::loadPage', function(HookEvent $event) {
             $pid = $event->arguments[0];
             $this->getHiddenTabs($pid);
@@ -132,13 +137,22 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         if($tab == "Settings" || $tab == "Children" || $tab == "Restore" || $tab == "Delete") {
             $fieldset = $form->find("id=ProcessPageEdit".$tab)->first();
         }
-        else {
+        elseif($tab == "View") {
             $fieldset = $form->find("id=ProcessPageEdit".$tab);
+        }
+        else {
+            $fieldset = $form->find("id=Inputfield_".$tab)->first();
         }
         if(!is_object($fieldset)) return;
 
         $form->remove($fieldset);
-        $event->object->removeTab("ProcessPageEdit".$tab);
+
+        if($tab == "Settings" || $tab == "Children" || $tab == "Restore" || $tab == "Delete" || $tab == "View") {
+            $event->object->removeTab("ProcessPageEdit".$tab);
+        }
+        else {
+            $event->object->removeTab("Inputfield_".$tab);
+        }
     }
 
 
@@ -164,6 +178,9 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $f->addOption("Restore");
         $f->addOption("Delete");
         $f->addOption("View");
+        foreach($this->wire('fields')->find("type=FieldtypeFieldsetTabOpen") as $tab) {
+            $f->addOption($tab->name, ($tab->label ?: $tab->name));
+        }
         if(isset($data['viewTabs'])) $f->value = $data['viewTabs'];
         $wrapper->add($f);
 
@@ -176,6 +193,9 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $f->addOption("Restore");
         $f->addOption("Delete");
         $f->addOption("View");
+        foreach($this->wire('fields')->find("type=FieldtypeFieldsetTabOpen") as $tab) {
+            $f->addOption($tab->name, ($tab->label ?: $tab->name));
+        }
         if(isset($data['hideTabs'])) $f->value = $data['hideTabs'];
         $wrapper->add($f);
 
@@ -187,6 +207,16 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         // populate with all available templates
         foreach($this->wire('templates') as $t) $f->addOption($t->id,$t->name);
         if(isset($data['specifiedTemplates'])) $f->value = $data['specifiedTemplates'];
+        $wrapper->add($f);
+
+        $f = $this->wire('modules')->get('InputfieldAsmSelect');
+        $f->attr('name+id', 'exemptRoles');
+        $f->label = __('Exempt Roles');
+        $f->description = __("Any selected roles will be exempt from all restrictions (same as the superuser is)");
+        $f->setAsmSelectOption('sortable', false);
+        // populate with all available templates
+        foreach($this->wire('roles') as $t) $f->addOption($t->id,$t->name);
+        if(isset($data['exemptRoles'])) $f->value = $data['exemptRoles'];
         $wrapper->add($f);
 
         $f = $this->wire('modules')->get('InputfieldCheckbox');
