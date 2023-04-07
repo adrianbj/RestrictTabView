@@ -6,7 +6,7 @@
  *
  * Determine how pages are renamed when the title is changed
  *
- * Copyright (C) 2020 by Adrian Jones
+ * Copyright (C) 2023 by Adrian Jones
  *
  */
 
@@ -18,7 +18,7 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
             'summary' => 'Restrict access to Page Edit tabs via permissions',
             'author' => 'Adrian Jones',
             'href' => 'http://modules.processwire.com/modules/restrict-tab-view/',
-            'version' => '1.3.0',
+            'version' => '1.3.1',
             'autoload' => 'template=admin',
             'requires' => 'ProcessWire>=2.5.16',
             'icon'     => 'toggle-on'
@@ -69,13 +69,15 @@ class RestrictTabView extends WireData implements Module, ConfigurableModule {
         $this->wire()->addHookBefore('ProcessPageEdit::buildFormContent', $this, "beforeBuildFormContent");
         $this->wire()->addHookAfter('ProcessPageEdit::buildForm', $this, "afterBuildForm");
         $this->wire()->addHookAfter('ProcessPageEdit::execute', function(HookEvent $event) {
-            if(in_array('View', $this->hiddenTabs)) {
-                $event->return .= '
-                <script>
-                    $(document).ready(function() {
-                        $("#_ProcessPageEditViewDropdown").remove();
-                    });
-                </script>';
+            if(!$this->wire('config')->ajax) {
+                if(in_array('View', $this->hiddenTabs)) {
+                    $event->return .= '
+                    <script>
+                        $(document).ready(function() {
+                            $("#_ProcessPageEditViewDropdown").remove();
+                        });
+                    </script>';
+                }
             }
         });
     }
